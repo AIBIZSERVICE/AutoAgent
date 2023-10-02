@@ -6,7 +6,7 @@
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://microsoft.github.io/autogen/blog"/>
     <subtitle>AutoGen Blog</subtitle>
-    <icon>https://microsoft.github.io/autogen/img/flaml_logo.ico</icon>
+    <icon>https://microsoft.github.io/autogen/img/ag.ico</icon>
     <entry>
         <title type="html"><![CDATA[Use AutoGen for Local LLMs]]></title>
         <id>Use AutoGen for Local LLMs</id>
