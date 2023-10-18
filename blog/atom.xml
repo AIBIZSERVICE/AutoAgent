@@ -2,11 +2,385 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://microsoft.github.io/autogen/blog</id>
     <title>AutoGen Blog</title>
-    <updated>2023-07-14T00:00:00.000Z</updated>
+    <updated>2023-10-18T00:00:00.000Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://microsoft.github.io/autogen/blog"/>
     <subtitle>AutoGen Blog</subtitle>
     <icon>https://microsoft.github.io/autogen/img/ag.ico</icon>
+    <entry>
+        <title type="html"><![CDATA[Retrieval-Augmented Generation (RAG) Applications with AutoGen]]></title>
+        <id>Retrieval-Augmented Generation (RAG) Applications with AutoGen</id>
+        <link href="https://microsoft.github.io/autogen/blog/2023/10/18/RetrieveChat"/>
+        <updated>2023-10-18T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[RAG Architecture]]></summary>
+        <content type="html"><![CDATA[<p><img src="img/retrievechat-arch.png" alt="RAG Architecture"/></p><p><strong>TL;DR:</strong></p><ul><li>We introduce <strong>RetrieveUserProxyAgent</strong> and <strong>RetrieveAssistantAgent</strong>, RAG agents of AutoGen that
+allows retrieval-augmented generation, and its basic usage.</li><li>We showcase customizations of RAG agents, such as customizing the embedding function, the text
+split function and vector database.</li><li>We also showcase two advanced usage of RAG agents, integrating with group chat and building a Chat
+application with Gradio.</li></ul><h2>Introduction</h2><p>Retrieval augmentation has emerged as a practical and effective approach for mitigating the intrinsic
+limitations of LLMs by incorporating external documents. In this blog post, we introduce RAG agents of
+AutoGen that allows retrieval-augmented generation. The system consists of two agents: a
+Retrieval-augmented User Proxy agent, called <code>RetrieveUserProxyAgent</code>, and a Retrieval-augmented Assistant
+agent, called <code>RetrieveAssistantAgent</code>, both of which are extended from built-in agents from AutoGen.
+The overall architecture of the RAG agents is shown in the figure above.</p><p>To use Retrieval-augmented Chat, one needs to initialize two agents including Retrieval-augmented
+User Proxy and Retrieval-augmented Assistant. Initializing the Retrieval-Augmented User Proxy
+necessitates specifying a path to the document collection. Subsequently, the Retrieval-Augmented
+User Proxy can download the documents, segment them into chunks of a specific size, compute
+embeddings, and store them in a vector database. Once a chat is initiated, the agents collaboratively
+engage in code generation or question-answering adhering to the procedures outlined below:</p><ol><li>The Retrieval-Augmented User Proxy retrieves document chunks based on the embedding similarity,
+and sends them along with the question to the Retrieval-Augmented Assistant.</li><li>The Retrieval-Augmented Assistant employs an LLM to generate code or text as answers based
+on the question and context provided. If the LLM is unable to produce a satisfactory response, it
+is instructed to reply with “Update Context” to the Retrieval-Augmented User Proxy.</li><li>If a response includes code blocks, the Retrieval-Augmented User Proxy executes the code and
+sends the output as feedback. If there are no code blocks or instructions to update the context, it
+terminates the conversation. Otherwise, it updates the context and forwards the question along
+with the new context to the Retrieval-Augmented Assistant. Note that if human input solicitation
+is enabled, individuals can proactively send any feedback, including Update Context”, to the
+Retrieval-Augmented Assistant.</li><li>If the Retrieval-Augmented Assistant receives “Update Context”, it requests the next most similar
+chunks of documents as new context from the Retrieval-Augmented User Proxy. Otherwise, it
+generates new code or text based on the feedback and chat history. If the LLM fails to generate
+an answer, it replies with “Update Context” again. This process can be repeated several times.
+The conversation terminates if no more documents are available for the context.</li></ol><h2>Basic Usage of RAG Agents</h2><ol><li>Import Agents</li></ol><pre><code class="language-python">from autogen
+from autogen.agentchat.contrib.retrieve_assistant_agent import RetrieveAssistantAgent
+from autogen.agentchat.contrib.retrieve_user_proxy_agent import RetrieveUserProxyAgent
+</code></pre><ol start="2"><li>Create an &#x27;RetrieveAssistantAgent&#x27; instance named &quot;assistant&quot; and an &#x27;RetrieveUserProxyAgent&#x27; instance named &quot;ragproxyagent&quot;</li></ol><pre><code class="language-python">assistant = RetrieveAssistantAgent(
+    name=&quot;assistant&quot;,
+    system_message=&quot;You are a helpful assistant.&quot;,
+    llm_config=llm_config,
+)
+
+ragproxyagent = RetrieveUserProxyAgent(
+    name=&quot;ragproxyagent&quot;,
+    retrieve_config={
+        &quot;task&quot;: &quot;qa&quot;,
+        &quot;docs_path&quot;: &quot;https://raw.githubusercontent.com/microsoft/autogen/main/README.md&quot;,
+    },
+)
+</code></pre><ol start="3"><li>Initialize Chat and ask a question</li></ol><pre><code class="language-python">assistant.reset()
+ragproxyagent.initiate_chat(assistant, problem=&quot;What is autogen?&quot;)
+</code></pre><p>Output is like:</p><pre><code>--------------------------------------------------------------------------------
+assistant (to ragproxyagent):
+
+AutoGen is a framework that enables the development of large language model (LLM) applications using multiple agents that can converse with each other to solve tasks. The agents are customizable, conversable, and allow human participation. They can operate in various modes that employ combinations of LLMs, human inputs, and tools.
+
+--------------------------------------------------------------------------------
+</code></pre><ol start="4"><li>Create a UserProxyAgent and ask the same question</li></ol><pre><code class="language-python">assistant.reset()
+userproxyagent = autogen.UserProxyAgent(name=&quot;userproxyagent&quot;)
+userproxyagent.initiate_chat(assistant, message=&quot;What is autogen?&quot;)
+</code></pre><p>Output is like:</p><pre><code>--------------------------------------------------------------------------------
+assistant (to userproxyagent):
+
+In computer software, autogen is a tool that generates program code automatically, without the need for manual coding. It is commonly used in fields such as software engineering, game development, and web development to speed up the development process and reduce errors. Autogen tools typically use pre-programmed rules, templates, and data to create code for repetitive tasks, such as generating user interfaces, database schemas, and data models. Some popular autogen tools include Visual Studio&#x27;s Code Generator and Unity&#x27;s Asset Store.
+
+--------------------------------------------------------------------------------
+</code></pre><p>You can see that the output of <code>UserProxyAgent</code> is not related to our <code>autogen</code> since the latest info of
+<code>autogen</code> is not in ChatGPT&#x27;s training data. The output of <code>RetrieveUserProxyAgent</code> is correct as it can
+perform retrieval-augmented generation based on the given documentation file.</p><h2>Customizing RAG Agents</h2><p><code>RetrieveUserProxyAgent</code> is customizable with <code>retrieve_config</code>. There are several parameters to configure
+based on different use cases. In this section, we&#x27;ll show how to customize embedding function, text split
+function and vector database.</p><h3>Customizing Embedding Function</h3><p>By default, <a href="https://www.sbert.net">Sentence Transformers</a> and its pretrained models will be used to
+compute embeddings. It&#x27;s possible that you want to use OpenAI, Cohere, HuggingFace or other embedding functions.</p><ul><li>OpenAI</li></ul><pre><code class="language-python">from chromadb.utils import embedding_functions
+
+openai_ef = embedding_functions.OpenAIEmbeddingFunction(
+                api_key=&quot;YOUR_API_KEY&quot;,
+                model_name=&quot;text-embedding-ada-002&quot;
+            )
+
+ragproxyagent = RetrieveUserProxyAgent(
+    name=&quot;ragproxyagent&quot;,
+    retrieve_config={
+        &quot;task&quot;: &quot;qa&quot;,
+        &quot;docs_path&quot;: &quot;https://raw.githubusercontent.com/microsoft/autogen/main/README.md&quot;,
+        &quot;embedding_function&quot;: openai_ef,
+    },
+)
+</code></pre><ul><li>HuggingFace</li></ul><pre><code class="language-python">huggingface_ef = embedding_functions.HuggingFaceEmbeddingFunction(
+    api_key=&quot;YOUR_API_KEY&quot;,
+    model_name=&quot;sentence-transformers/all-MiniLM-L6-v2&quot;
+)
+</code></pre><p>More examples can be found <a href="https://docs.trychroma.com/embeddings">here</a>.</p><h3>Customizing Text Split Function</h3><p>Before we can store the documents into a vector database, we need to split the texts into chunks. Although
+we have implemented a flexible text splitter in autogen, you may still want to use different text splitters.
+There are also some existing text split tools which are good to reuse.</p><p>For example, you can use all the text splitters in langchain.</p><pre><code class="language-python">from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+recur_spliter = RecursiveCharacterTextSplitter(separators=[&quot;\n&quot;, &quot;\r&quot;, &quot;\t&quot;])
+
+ragproxyagent = RetrieveUserProxyAgent(
+    name=&quot;ragproxyagent&quot;,
+    retrieve_config={
+        &quot;task&quot;: &quot;qa&quot;,
+        &quot;docs_path&quot;: &quot;https://raw.githubusercontent.com/microsoft/autogen/main/README.md&quot;,
+        &quot;custom_text_split_function&quot;: recur_spliter.split_text,
+    },
+)
+</code></pre><h3>Customizing Vector Database</h3><p>We are using chromadb as the default vector database, you can also replace it with any other vector database
+by simply overriding the function <code>retrieve_docs</code> of <code>RetrieveUserProxyAgent</code>.</p><p>For example, you can use Qdrant as below:</p><pre><code class="language-python"># Creating qdrant client
+from qdrant_client import QdrantClient
+
+client = QdrantClient(url=&quot;***&quot;, api_key=&quot;***&quot;)
+
+# Wrapping RetrieveUserProxyAgent
+from litellm import embedding as test_embedding
+from autogen.agentchat.contrib.retrieve_user_proxy_agent import RetrieveUserProxyAgent
+from qdrant_client.models import SearchRequest, Filter, FieldCondition, MatchText
+
+class QdrantRetrieveUserProxyAgent(RetrieveUserProxyAgent):
+    def query_vector_db(
+        self,
+        query_texts: List[str],
+        n_results: int = 10,
+        search_string: str = &quot;&quot;,
+        **kwargs,
+    ) -&gt; Dict[str, Union[List[str], List[List[str]]]]:
+        # define your own query function here
+        embed_response = test_embedding(&#x27;text-embedding-ada-002&#x27;, input=query_texts)
+
+        all_embeddings: List[List[float]] = []
+
+        for item in embed_response[&#x27;data&#x27;]:
+            all_embeddings.append(item[&#x27;embedding&#x27;])
+
+        search_queries: List[SearchRequest] = []
+
+        for embedding in all_embeddings:
+            search_queries.append(
+                SearchRequest(
+                    vector=embedding,
+                    filter=Filter(
+                        must=[
+                            FieldCondition(
+                                key=&quot;page_content&quot;,
+                                match=MatchText(
+                                    text=search_string,
+                                )
+                            )
+                        ]
+                    ),
+                    limit=n_results,
+                    with_payload=True,
+                )
+            )
+
+        search_response = client.search_batch(
+            collection_name=&quot;{your collection name}&quot;,
+            requests=search_queries,
+        )
+
+        return {
+            &quot;ids&quot;: [[scored_point.id for scored_point in batch] for batch in search_response],
+            &quot;documents&quot;: [[scored_point.payload.get(&#x27;page_content&#x27;, &#x27;&#x27;) for scored_point in batch] for batch in search_response],
+            &quot;metadatas&quot;: [[scored_point.payload.get(&#x27;metadata&#x27;, {}) for scored_point in batch] for batch in search_response]
+        }
+
+    def retrieve_docs(self, problem: str, n_results: int = 20, search_string: str = &quot;&quot;, **kwargs):
+        results = self.query_vector_db(
+            query_texts=[problem],
+            n_results=n_results,
+            search_string=search_string,
+            **kwargs,
+        )
+
+        self._results = results
+
+
+# Use QdrantRetrieveUserProxyAgent
+qdrantragagent = QdrantRetrieveUserProxyAgent(
+    name=&quot;ragproxyagent&quot;,
+    human_input_mode=&quot;NEVER&quot;,
+    max_consecutive_auto_reply=2,
+    retrieve_config={
+        &quot;task&quot;: &quot;qa&quot;,
+    },
+)
+
+qdrantragagent.retrieve_docs(&quot;What is Autogen?&quot;, n_results=10, search_string=&quot;autogen&quot;)
+</code></pre><h2>Advanced Usage of RAG Agents</h2><h3>Integrate with other agents in a group chat</h3><p>To use <code>RetrieveUserProxyAgent</code> in a group chat is almost the same as you use it in a two agents chat. The only thing is that
+you need to <strong>initialize the chat with <code>RetrieveUserProxyAgent</code></strong>. The <code>RetrieveAssistantAgent</code> is not necessary in a group chat.</p><p>However, you may want to initialize the chat with another agent in some cases. To leverage the best of <code>RetrieveUserProxyAgent</code>,
+you&#x27;ll need to call it from a function.</p><pre><code class="language-python">llm_config = {
+    &quot;functions&quot;: [
+        {
+            &quot;name&quot;: &quot;retrieve_content&quot;,
+            &quot;description&quot;: &quot;retrieve content for code generation and question answering.&quot;,
+            &quot;parameters&quot;: {
+                &quot;type&quot;: &quot;object&quot;,
+                &quot;properties&quot;: {
+                    &quot;message&quot;: {
+                        &quot;type&quot;: &quot;string&quot;,
+                        &quot;description&quot;: &quot;Refined message which keeps the original meaning and can be used to retrieve content for code generation and question answering.&quot;,
+                    }
+                },
+                &quot;required&quot;: [&quot;message&quot;],
+            },
+        },
+    ],
+    &quot;config_list&quot;: config_list,
+    &quot;request_timeout&quot;: 60,
+    &quot;seed&quot;: 42,
+}
+
+boss = autogen.UserProxyAgent(
+    name=&quot;Boss&quot;,
+    is_termination_msg=termination_msg,
+    human_input_mode=&quot;TERMINATE&quot;,
+    system_message=&quot;The boss who ask questions and give tasks.&quot;,
+)
+
+boss_aid = RetrieveUserProxyAgent(
+    name=&quot;Boss_Assistant&quot;,
+    is_termination_msg=termination_msg,
+    system_message=&quot;Assistant who has extra content retrieval power for solving difficult problems.&quot;,
+    human_input_mode=&quot;NEVER&quot;,
+    max_consecutive_auto_reply=3,
+    retrieve_config={
+        &quot;task&quot;: &quot;qa&quot;,
+    },
+    code_execution_config=False,  # we don&#x27;t want to execute code in this case.
+)
+
+coder = AssistantAgent(
+    name=&quot;Senior_Python_Engineer&quot;,
+    is_termination_msg=termination_msg,
+    system_message=&quot;You are a senior python engineer. Reply `TERMINATE` in the end when everything is done.&quot;,
+    llm_config=llm_config,
+)
+
+pm = autogen.AssistantAgent(
+    name=&quot;Product_Manager&quot;,
+    is_termination_msg=termination_msg,
+    system_message=&quot;You are a product manager. Reply `TERMINATE` in the end when everything is done.&quot;,
+    llm_config=llm_config,
+)
+
+reviewer = autogen.AssistantAgent(
+    name=&quot;Code_Reviewer&quot;,
+    is_termination_msg=termination_msg,
+    system_message=&quot;You are a code reviewer. Reply `TERMINATE` in the end when everything is done.&quot;,
+    llm_config=llm_config,
+)
+
+def retrieve_content(message, n_results=3):
+        boss_aid.n_results = n_results  # Set the number of results to be retrieved.
+        # Check if we need to update the context.
+        update_context_case1, update_context_case2 = boss_aid._check_update_context(message)
+        if (update_context_case1 or update_context_case2) and boss_aid.update_context:
+            boss_aid.problem = message if not hasattr(boss_aid, &quot;problem&quot;) else boss_aid.problem
+            _, ret_msg = boss_aid._generate_retrieve_user_reply(message)
+        else:
+            ret_msg = boss_aid.generate_init_message(message, n_results=n_results)
+        return ret_msg if ret_msg else message
+
+for agent in [boss, coder, pm, reviewer]:
+    # register functions for all agents.
+    agent.register_function(
+        function_map={
+            &quot;retrieve_content&quot;: retrieve_content,
+        }
+    )
+
+groupchat = autogen.GroupChat(
+    agents=[boss, coder, pm, reviewer], messages=[], max_round=12
+)
+manager = autogen.GroupChatManager(groupchat=groupchat, llm_config=llm_config)
+
+# Start chatting with boss as this is the user proxy agent.
+boss.initiate_chat(
+    manager,
+    message=&quot;How to use spark for parallel training in FLAML? Give me sample code.&quot;,
+)
+</code></pre><h3>Build a Chat application with Gradio</h3><p>Now, let&#x27;s wrap it up and make a Chat application with AutoGen and Gradio.</p><p><img src="img/autogen-rag.gif" alt="RAG ChatBot with AutoGen"/></p><pre><code class="language-python"># Initialize Agents
+def initialize_agents(config_list, docs_path=None):
+    ...
+    return assistant, ragproxyagent
+
+# Initialize Chat
+def initiate_chat(config_list, problem, queue, n_results=3):
+    ...
+    assistant.reset()
+    try:
+        ragproxyagent.a_initiate_chat(
+            assistant, problem=problem, silent=False, n_results=n_results
+        )
+        messages = ragproxyagent.chat_messages
+        messages = [messages[k] for k in messages.keys()][0]
+        messages = [m[&quot;content&quot;] for m in messages if m[&quot;role&quot;] == &quot;user&quot;]
+        print(&quot;messages: &quot;, messages)
+    except Exception as e:
+        messages = [str(e)]
+    queue.put(messages)
+
+# Wrap AutoGen part into a function
+def chatbot_reply(input_text):
+    &quot;&quot;&quot;Chat with the agent through terminal.&quot;&quot;&quot;
+    queue = mp.Queue()
+    process = mp.Process(
+        target=initiate_chat,
+        args=(config_list, input_text, queue),
+    )
+    process.start()
+    try:
+        messages = queue.get(timeout=TIMEOUT)
+    except Exception as e:
+        messages = [str(e) if len(str(e)) &gt; 0 else &quot;Invalid Request to OpenAI, please check your API keys.&quot;]
+    finally:
+        try:
+            process.terminate()
+        except:
+            pass
+    return messages
+
+...
+
+# Set up UI with Gradio
+with gr.Blocks() as demo:
+    ...
+    assistant, ragproxyagent = initialize_agents(config_list)
+
+    chatbot = gr.Chatbot(
+        [],
+        elem_id=&quot;chatbot&quot;,
+        bubble_full_width=False,
+        avatar_images=(None, (os.path.join(os.path.dirname(__file__), &quot;autogen.png&quot;))),
+        # height=600,
+    )
+
+    txt_input = gr.Textbox(
+        scale=4,
+        show_label=False,
+        placeholder=&quot;Enter text and press enter&quot;,
+        container=False,
+    )
+
+    with gr.Row():
+        txt_model = gr.Dropdown(
+            label=&quot;Model&quot;,
+            choices=[
+                &quot;gpt-4&quot;,
+                &quot;gpt-35-turbo&quot;,
+                &quot;gpt-3.5-turbo&quot;,
+            ],
+            allow_custom_value=True,
+            value=&quot;gpt-35-turbo&quot;,
+            container=True,
+        )
+        txt_oai_key = gr.Textbox(
+            label=&quot;OpenAI API Key&quot;,
+            placeholder=&quot;Enter key and press enter&quot;,
+            max_lines=1,
+            show_label=True,
+            value=os.environ.get(&quot;OPENAI_API_KEY&quot;, &quot;&quot;),
+            container=True,
+            type=&quot;password&quot;,
+        )
+        ...
+
+    clear = gr.ClearButton([txt_input, chatbot])
+
+...
+
+if __name__ == &quot;__main__&quot;:
+    demo.launch(share=True)
+</code></pre><p>The online app and the source code are hosted in <a href="https://huggingface.co/spaces/thinkall/autogen-demos">HuggingFace</a>. Feel free to give it a try!</p><h2>Read More</h2><p>You can check out more example notebooks for RAG use cases:</p><ul><li><a href="https://github.com/microsoft/autogen/blob/main/notebook/agentchat_RetrieveChat.ipynb">Auto Generated Agent Chat: Using RetrieveChat for Retrieve Augmented Code Generation and Question Answering</a></li><li><a href="https://github.com/microsoft/autogen/blob/main/notebook/agentchat_groupchat_RAG.ipynb">Auto Generated Agent Chat: Group Chat with Retrieval Augmented Generation</a></li></ul>]]></content>
+        <author>
+            <name>Li Jiang</name>
+            <uri>https://github.com/thinkall</uri>
+        </author>
+    </entry>
     <entry>
         <title type="html"><![CDATA[Use AutoGen for Local LLMs]]></title>
         <id>Use AutoGen for Local LLMs</id>
