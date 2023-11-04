@@ -21,7 +21,7 @@ from autogen.agentchat.contrib.teachable_agent import TeachableAgent
 # and OAI_CONFIG_LIST_sample
 filter_dict = {&quot;model&quot;: [&quot;gpt-4&quot;]}  # GPT-3.5 is less reliable than GPT-4 at learning from user feedback.
 config_list = config_list_from_json(env_or_file=&quot;OAI_CONFIG_LIST&quot;, filter_dict=filter_dict)
-llm_config={&quot;config_list&quot;: config_list, &quot;request_timeout&quot;: 120}
+llm_config={&quot;config_list&quot;: config_list, &quot;timeout&quot;: 120}
 </code></pre><ol start="4"><li>Create the agents</li></ol><pre><code class="language-python">teachable_agent = TeachableAgent(
     name=&quot;teachableagent&quot;,
     llm_config=llm_config,
@@ -493,7 +493,7 @@ you&#x27;ll need to call it from a function.</p><pre><code class="language-pytho
         },
     ],
     &quot;config_list&quot;: config_list,
-    &quot;request_timeout&quot;: 60,
+    &quot;timeout&quot;: 60,
     &quot;seed&quot;: 42,
 }
 
@@ -688,14 +688,14 @@ class CompletionResponseStreamChoice(BaseModel):
     text: str
     logprobs: Optional[float] = None
     # finish_reason: Optional[Literal[&quot;stop&quot;, &quot;length&quot;]] = None
-</code></pre><h2>Interact with model using <code>oai.Completion</code></h2><p>Now the models can be directly accessed through openai-python library as well as <code>autogen.oai.Completion</code> and <code>autogen.oai.ChatCompletion</code>.</p><pre><code class="language-python">from autogen import oai
+</code></pre><h2>Interact with model using <code>oai.Completion</code> (requires openai&lt;1)</h2><p>Now the models can be directly accessed through openai-python library as well as <code>autogen.oai.Completion</code> and <code>autogen.oai.ChatCompletion</code>.</p><pre><code class="language-python">from autogen import oai
 
 # create a text completion request
 response = oai.Completion.create(
     config_list=[
         {
             &quot;model&quot;: &quot;chatglm2-6b&quot;,
-            &quot;api_base&quot;: &quot;http://localhost:8000/v1&quot;,
+            &quot;base_url&quot;: &quot;http://localhost:8000/v1&quot;,
             &quot;api_type&quot;: &quot;open_ai&quot;,
             &quot;api_key&quot;: &quot;NULL&quot;, # just a placeholder
         }
@@ -709,7 +709,7 @@ response = oai.ChatCompletion.create(
     config_list=[
         {
             &quot;model&quot;: &quot;chatglm2-6b&quot;,
-            &quot;api_base&quot;: &quot;http://localhost:8000/v1&quot;,
+            &quot;base_url&quot;: &quot;http://localhost:8000/v1&quot;,
             &quot;api_type&quot;: &quot;open_ai&quot;,
             &quot;api_key&quot;: &quot;NULL&quot;,
         }
@@ -729,13 +729,13 @@ response = oai.ChatCompletion.create(
     config_list=[
         {
             &quot;model&quot;: &quot;chatglm2-6b&quot;,
-            &quot;api_base&quot;: &quot;http://localhost:8000/v1&quot;,
+            &quot;base_url&quot;: &quot;http://localhost:8000/v1&quot;,
             &quot;api_type&quot;: &quot;open_ai&quot;,
             &quot;api_key&quot;: &quot;NULL&quot;,
         },
         {
             &quot;model&quot;: &quot;vicuna-7b-v1.3&quot;,
-            &quot;api_base&quot;: &quot;http://localhost:8000/v1&quot;,
+            &quot;base_url&quot;: &quot;http://localhost:8000/v1&quot;,
             &quot;api_type&quot;: &quot;open_ai&quot;,
             &quot;api_key&quot;: &quot;NULL&quot;,
         }
