@@ -321,7 +321,12 @@ chunks of documents as new context from the Retrieval-Augmented User Proxy. Othe
 generates new code or text based on the feedback and chat history. If the LLM fails to generate
 an answer, it replies with “Update Context” again. This process can be repeated several times.
 The conversation terminates if no more documents are available for the context.</li></ol><h2>Basic Usage of RAG Agents</h2><ol start="0"><li>Install dependencies</li></ol><p>Please install pyautogen with the <!-- -->[retrievechat]<!-- --> option before using RAG agents.</p><pre><code class="language-bash">pip install &quot;pyautogen[retrievechat]&quot;
-</code></pre><ol><li>Import Agents</li></ol><pre><code class="language-python">import autogen
+</code></pre><p>RetrieveChat can handle various types of documents. By default, it can process
+plain text and PDF files, including formats such as &#x27;txt&#x27;, &#x27;json&#x27;, &#x27;csv&#x27;, &#x27;tsv&#x27;,
+&#x27;md&#x27;, &#x27;html&#x27;, &#x27;htm&#x27;, &#x27;rtf&#x27;, &#x27;rst&#x27;, &#x27;jsonl&#x27;, &#x27;log&#x27;, &#x27;xml&#x27;, &#x27;yaml&#x27;, &#x27;yml&#x27; and &#x27;pdf&#x27;.
+If you install <a href="https://unstructured-io.github.io/unstructured/installation/full_installation.html">unstructured</a>
+(<code>pip install &quot;unstructured[all-docs]&quot;</code>), additional document types such as &#x27;docx&#x27;,
+&#x27;doc&#x27;, &#x27;odt&#x27;, &#x27;pptx&#x27;, &#x27;ppt&#x27;, &#x27;xlsx&#x27;, &#x27;eml&#x27;, &#x27;msg&#x27;, &#x27;epub&#x27; will also be supported.</p><p>You can find a list of all supported document types by using <code>autogen.retrieve_utils.TEXT_FORMATS</code>.</p><ol><li>Import Agents</li></ol><pre><code class="language-python">import autogen
 from autogen.agentchat.contrib.retrieve_assistant_agent import RetrieveAssistantAgent
 from autogen.agentchat.contrib.retrieve_user_proxy_agent import RetrieveUserProxyAgent
 </code></pre><ol start="2"><li>Create an &#x27;RetrieveAssistantAgent&#x27; instance named &quot;assistant&quot; and an &#x27;RetrieveUserProxyAgent&#x27; instance named &quot;ragproxyagent&quot;</li></ol><pre><code class="language-python">assistant = RetrieveAssistantAgent(
@@ -658,7 +663,7 @@ with gr.Blocks() as demo:
 
 if __name__ == &quot;__main__&quot;:
     demo.launch(share=True)
-</code></pre><p>The online app and the source code are hosted in <a href="https://huggingface.co/spaces/thinkall/autogen-demos">HuggingFace</a>. Feel free to give it a try!</p><h2>Read More</h2><p>You can check out more example notebooks for RAG use cases:</p><ul><li><a href="https://github.com/microsoft/autogen/blob/main/notebook/agentchat_RetrieveChat.ipynb">Automated Code Generation and Question Answering with Retrieval Augmented Agents</a></li><li><a href="https://github.com/microsoft/autogen/blob/main/notebook/agentchat_groupchat_RAG.ipynb">Group Chat with Retrieval Augmented Generation (with 5 group member agents and 1 manager agent)</a></li></ul>]]></content>
+</code></pre><p>The online app and the source code are hosted in <a href="https://huggingface.co/spaces/thinkall/autogen-demos">HuggingFace</a>. Feel free to give it a try!</p><h2>Read More</h2><p>You can check out more example notebooks for RAG use cases:</p><ul><li><a href="https://github.com/microsoft/autogen/blob/main/notebook/agentchat_RetrieveChat.ipynb">Automated Code Generation and Question Answering with Retrieval Augmented Agents</a></li><li><a href="https://github.com/microsoft/autogen/blob/main/notebook/agentchat_groupchat_RAG.ipynb">Group Chat with Retrieval Augmented Generation (with 5 group member agents and 1 manager agent)</a></li><li><a href="https://github.com/microsoft/autogen/blob/main/notebook/agentchat_qdrant_RetrieveChat.ipynb">Automated Code Generation and Question Answering with Qdrant based Retrieval Augmented Agents</a></li></ul>]]></content>
         <author>
             <name>Li Jiang</name>
             <uri>https://github.com/thinkall</uri>
