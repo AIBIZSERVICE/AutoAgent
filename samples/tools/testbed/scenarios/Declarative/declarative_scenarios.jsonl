@@ -1,0 +1,2 @@
+{"id": "eiffel_tower_height", "template": ["Template", ["AgentSpecs/example_spec.json", "agent_spec.json"]], "substitutions": {"scenario.py": {"__PROMPT__": "What is the height of the Eiffel Tower?"}}}
+{"id": "isodate", "template": ["Template", ["AgentSpecs/example_spec.json", "agent_spec.json"]], "substitutions": {"scenario.py": {"__PROMPT__": "Print the current date and time, formatted according to ISO 8601."}}}
