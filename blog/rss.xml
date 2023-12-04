@@ -56,14 +56,12 @@ A: Yes, you can view the generated messages in the debug console of the web UI, 
 A: Our GitHub repository hosts comprehensive documentation, including a detailed getting-started guide and an FAQ section. For additional support, you can raise issues on the repository or reach out to the community on forums and discussion boards associated with the project.</p>]]></content:encoded>
         </item>
         <item>
-            <title><![CDATA[Agent-AutoBuild]]></title>
+            <title><![CDATA[Agent AutoBuild - Automatically Building Multi-agent Systems]]></title>
             <link>https://microsoft.github.io/autogen/blog/2023/11/26/Agent-AutoBuild</link>
-            <guid>Agent-AutoBuild</guid>
+            <guid>Agent AutoBuild - Automatically Building Multi-agent Systems</guid>
             <pubDate>Sun, 26 Nov 2023 00:00:00 GMT</pubDate>
-            <description><![CDATA[---]]></description>
-            <content:encoded><![CDATA[<hr/><p>title: Agent AutoBuild - Automatically Building Multi-agent Systems
-authors:</p><ul><li>LinxinS97</li><li>jieyuz2
-tags: <!-- -->[LLM, research]</li></ul><hr/><p><img src="img/agent_autobuild.png" alt="Overall structure of AutoBuild"/></p><p><strong>TL;DR:</strong>
+            <description><![CDATA[Overall structure of AutoBuild]]></description>
+            <content:encoded><![CDATA[<p><img src="img/agent_autobuild.png" alt="Overall structure of AutoBuild"/></p><p><strong>TL;DR:</strong>
 Introducing <strong>AutoBuild</strong>, building multi-agent system automatically, fast, and easily for complex tasks with minimal
 user prompt required, powered by a new designed class <strong>AgentBuilder</strong>. AgentBuilder also support open-source LLMs by
 leveraging <a href="https://docs.vllm.ai/en/latest/index.html">vLLM</a> and <a href="https://github.com/lm-sys/FastChat">FastChat</a>.
