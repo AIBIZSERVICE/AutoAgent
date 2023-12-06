@@ -15,10 +15,15 @@ class WebSurferAgent(ConversableAgent):
         + datetime.now().date().isoformat()
     )
 
+    DEFAULT_SURFER_DESCRIPTION = (
+        "A helpful assistant with access to a web browser. Ask them to perform web searches, open pages, navigate within pages (scroll up/down, find-in-page, etc.).",
+    )
+
     def __init__(
         self,
         name,
         system_message: Optional[Union[str, List]] = DEFAULT_SURFER_PROMPT,
+        description: Optional[Union[str, None]] = DEFAULT_SURFER_DESCRIPTION,
         is_termination_msg: Optional[Callable[[Dict], bool]] = None,
         max_consecutive_auto_reply: Optional[int] = None,
         human_input_mode: Optional[str] = "TERMINATE",
@@ -31,6 +36,7 @@ class WebSurferAgent(ConversableAgent):
         super().__init__(
             name=name,
             system_message=system_message,
+            description=description,
             is_termination_msg=is_termination_msg,
             max_consecutive_auto_reply=max_consecutive_auto_reply,
             human_input_mode=human_input_mode,
