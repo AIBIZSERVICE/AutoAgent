@@ -102,7 +102,7 @@ DO NOT OUTPUT ANYTHING OTHER THAN THIS JSON OBJECT. yOUR OUTPUT MUST BE PARSABLE
 
         exclude_speaker_msg = ""
         if excluded_agent is not None:
-            exclude_speaker_msg = '\nNote: Don\'t ask {excluded_agent.name} again, since they just spoke. Instead ask {" or ".join([agent.name for agent in agents])}.'
+            exclude_speaker_msg = f"\nNote: Don't ask {excluded_agent.name} again, since they just spoke. Instead ask {' or '.join([agent.name for agent in agents])}."
 
         return f"""Read the above conversation, then carefully answer the following questions, with a focus on making progress on the task:
 
