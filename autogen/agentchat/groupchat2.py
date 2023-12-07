@@ -40,7 +40,7 @@ class GroupChat2:
     admin_name: str = "Admin"
     func_call_filter: bool = True
     speaker_selection_method: str = "auto"
-    allow_repeat_speaker: bool = True
+    allow_repeat_speaker: Optional[Union[bool, List[Agent]]] = True
 
     _VALID_SPEAKER_SELECTION_METHODS = ["auto", "manual", "random", "round_robin"]
 
@@ -155,9 +155,12 @@ DO NOT OUTPUT ANYTHING OTHER THAN THIS JSON OBJECT. yOUR OUTPUT MUST BE PARSABLE
                 f"It should be one of {self._VALID_SPEAKER_SELECTION_METHODS} (case insensitive). "
             )
 
-        allow_repeat_speaker = self.allow_repeat_speaker
-        if last_speaker is not None and last_speaker.name == "web_surfer":
-            allow_repeat_speaker = True
+        # If provided a list, make sure the agent is in the list
+        allow_repeat_speaker = (
+            self.allow_repeat_speaker
+            if isinstance(self.allow_repeat_speaker, bool)
+            else last_speaker in self.allow_repeat_speaker
+        )
 
         agents = self.agents
         n_agents = len(agents)
