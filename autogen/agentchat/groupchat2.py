@@ -83,7 +83,7 @@ class GroupChat2:
 
 Read the following conversation, then carefully consider who you should speak to next, and what you should ask of them, so as to make the most progress on the task). Speakers do not need equal speaking time. You may even ignore non-relevant participants. Your focus is on efficiently driving progress toward task completion.
 
-After each participant response, answer the following three question:
+After each participant response, answer the following three questions:
     - WHO should speak next? (A valid participant name, selected from this list: {[agent.name for agent in agents]})
     - WHAT should you ask of them? (phrased the way you would actually ask them in conversation)
     - WHY it makes sense to ask them at this moment (your internal reasoning)
@@ -97,13 +97,19 @@ Your output should be a perfect JSON object as per below:
 DO NOT OUTPUT ANYTHING OTHER THAN THIS JSON OBJECT. yOUR OUTPUT MUST BE PARSABLE AS JSON.
 """
 
-    def select_speaker_prompt(self, agents: List[Agent]):
+    def select_speaker_prompt(self, agents: List[Agent], excluded_agent: Optional[Union[Agent, None]] = None):
         """Return the floating system prompt selecting the next speaker. This is always the *last* message in the context."""
-        return f"""Read the above conversation, then carefully ansewr the following questions, with a focus on making progress on the task:
+
+        exclude_speaker_msg = ""
+        if excluded_agent is not None:
+            exclude_speaker_msg = '\nNote: Don\'t ask {excluded_agent.name} again, since they just spoke. Instead ask {" or ".join([agent.name for agent in agents])}.'
+
+        return f"""Read the above conversation, then carefully answer the following questions, with a focus on making progress on the task:
 
     - WHO should speak next? (A valid participant name, selected from this list: {[agent.name for agent in agents]})
     - WHAT should you ask of them? (phrased the way you would actually ask them in conversation)
     - WHY it makes sense to ask them at this moment (your internal reasoning)
+{exclude_speaker_msg}
 
 Your output should be a perfect JSON object as per below:
     {{
@@ -197,7 +203,12 @@ DO NOT OUTPUT ANYTHING OTHER THAN THIS JSON OBJECT. yOUR OUTPUT MUST BE PARSABLE
 
         # auto speaker selection
         selector.update_system_message(self.select_speaker_msg(agents))
-        context = self.messages + [{"role": "system", "content": self.select_speaker_prompt(agents)}]
+        context = self.messages + [
+            {
+                "role": "system",
+                "content": self.select_speaker_prompt(agents, None if self.allow_repeat_speaker else last_speaker),
+            }
+        ]
         # print(json.dumps(selector._oai_system_message + context, indent=4))
         final, response = selector.generate_oai_reply(context)
 
@@ -206,8 +217,12 @@ DO NOT OUTPUT ANYTHING OTHER THAN THIS JSON OBJECT. yOUR OUTPUT MUST BE PARSABLE
             return (self.next_agent(last_speaker, agents), None)
 
         # Parse the response
-        parsed_response = json.loads(response)
-        # print(json.dumps(parsed_response, indent=4))
+        try:
+            # print(json.dumps(parsed_response, indent=4))
+            parsed_response = json.loads(response)
+        except json.decoder.JSONDecodeError:
+            logger.warning(f"Failed to parse:\n{parsed_response}")
+            return (self.next_agent(last_speaker, agents), None)
 
         # Return the result
         try:
