@@ -114,24 +114,25 @@ class WebSurferAgent(ConversableAgent):
                 "parameters": {"type": "object", "properties": {}},
                 "required": [],
             },
-            {
-                "name": "summarize_page",
-                "description": "Summarize the content found at a given url, with respect to an optional question. If the url is not provided, the current page is summarized.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "url": {
-                            "type": "string",
-                            "description": "[Optional] The url of the page to summarize. (Defaults to current page)",
-                        },
-                        "question": {
-                            "type": "string",
-                            "description": "[Optional] The question to answer with the summary. (If omiitted, the entire page will be summarized)",
-                        },
-                    },
-                },
-                "required": [],
-            },
+            # TOO COSTLY
+            #            {
+            #                "name": "summarize_page",
+            #                "description": "Summarize the content found at a given url, with respect to an optional question. If the url is not provided, the current page is summarized.",
+            #                "parameters": {
+            #                    "type": "object",
+            #                    "properties": {
+            #                        "url": {
+            #                            "type": "string",
+            #                            "description": "[Optional] The url of the page to summarize. (Defaults to current page)",
+            #                        },
+            #                        "question": {
+            #                            "type": "string",
+            #                            "description": "[Optional] The question to answer with the summary. (If omiitted, the entire page will be summarized)",
+            #                        },
+            #                    },
+            #                },
+            #                "required": [],
+            #            },
         ]
 
         # Set up the inner monologue
@@ -279,7 +280,7 @@ class WebSurferAgent(ConversableAgent):
                 "page_down": lambda: _page_down(),
                 "find_on_page": lambda find_string: _find_on_page(find_string),
                 "find_next_on_page": lambda: _find_next_on_page(),
-                "summarize_page": lambda url=None, question=None: _summarize_page(url, question),
+                # "summarize_page": lambda url=None, question=None: _summarize_page(url, question),
             }
         )
 
