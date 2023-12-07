@@ -157,7 +157,7 @@ DO NOT OUTPUT ANYTHING OTHER THAN THIS JSON OBJECT. yOUR OUTPUT MUST BE PARSABLE
 
         allow_repeat_speaker = self.allow_repeat_speaker
         if last_speaker is not None and last_speaker.name == "web_surfer":
-            allow_repeat_speaker = False
+            allow_repeat_speaker = True
 
         agents = self.agents
         n_agents = len(agents)
