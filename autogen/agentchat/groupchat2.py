@@ -371,7 +371,7 @@ class GroupChatManager2(ConversableAgent):
 
                 # Switch roles
                 moderator_message = moderator_message.copy()
-                moderator_message["role"] = "assisant"
+                moderator_message["role"] = "assistant"
                 groupchat.append(moderator_message)
             try:
                 # let the speaker speak
