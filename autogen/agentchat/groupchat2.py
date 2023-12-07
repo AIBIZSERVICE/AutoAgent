@@ -117,7 +117,7 @@ Your output should be a perfect JSON object as per below:
         "who": participant_name,
         "what": your_question_or_request
     }}
-DO NOT OUTPUT ANYTHING OTHER THAN THIS JSON OBJECT. yOUR OUTPUT MUST BE PARSABLE AS JSON.
+DO NOT OUTPUT ANYTHING OTHER THAN THIS JSON OBJECT. YOUR OUTPUT MUST BE PARSABLE AS JSON.
 """
 
     def manual_select_speaker(self, agents: List[Agent]) -> Union[Agent, None]:
@@ -216,7 +216,7 @@ DO NOT OUTPUT ANYTHING OTHER THAN THIS JSON OBJECT. yOUR OUTPUT MUST BE PARSABLE
                 "content": self.select_speaker_prompt(agents, None if allow_repeat_speaker else last_speaker),
             }
         ]
-        print(json.dumps(selector._oai_system_message + context, indent=4))
+        # print(json.dumps(selector._oai_system_message + context, indent=4))
         final, response = selector.generate_oai_reply(context)
 
         if not final:
@@ -225,7 +225,7 @@ DO NOT OUTPUT ANYTHING OTHER THAN THIS JSON OBJECT. yOUR OUTPUT MUST BE PARSABLE
 
         # Parse the response
         try:
-            print(json.dumps(response, indent=4))
+            # print(json.dumps(response, indent=4))
             parsed_response = json.loads(response)
         except json.decoder.JSONDecodeError:
             logger.warning(f"Failed to parse:\n{response}")
