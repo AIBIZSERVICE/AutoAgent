@@ -333,10 +333,10 @@ class GroupChatManager2(ConversableAgent):
         groupchat = config
 
         # Broadcast the intro
-        intro = groupchat.intro_msg()
+        intro = {"role": "user", "name": self.name, "content": groupchat.intro_msg()}
         first = True
         for agent in groupchat.agents:
-            self.send(intro, agent, request_reply=False, silent=first)
+            self.send(intro, agent, request_reply=False, silent=(not first))
             first = False
 
         for i in range(groupchat.max_round):
@@ -362,12 +362,17 @@ class GroupChatManager2(ConversableAgent):
 
             # If the message isn't none, broadcast it too
             if moderator_message is not None:
+                moderator_message = {"role": "user", "name": self.name, "content": moderator_message}
                 for agent in groupchat.agents:
                     if agent == speaker:
                         self.send(moderator_message, agent, request_reply=False, silent=False)
                     else:
                         self.send(moderator_message, agent, request_reply=False, silent=True)
-                groupchat.append({"role": "assistant", "name": self.name, "content": moderator_message})
+
+                # Switch roles
+                moderator_message = moderator_message.copy()
+                moderator_message["role"] = "assisant"
+                groupchat.append(moderator_message)
             try:
                 # let the speaker speak
                 reply = speaker.generate_reply(sender=self)
