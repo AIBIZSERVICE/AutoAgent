@@ -95,13 +95,13 @@ class GroupChat2:
 
     def select_speaker_msg(self, agents: List[Agent]):
         """Return the system message for selecting the next speaker. This is always the *first* message in the context."""
-        return f"""You are moderating a conversation between the following participants:
+        return f"""You are moderating a conversation between {len(self.agents)} participants who are working together to answer questions and perform tasks. Your role is as a moderator. DON'T DIRECTLY ANSWER THE QUESTIONS OR TASKS, but instead direct the participants to do so. In attendance are the following participants:
 
 {self._participant_roles(agents)}
 
 Read the following conversation, then carefully consider who you should speak to next, and what you should ask of them, so as to make the most progress on the task). Speakers do not need equal speaking time. You may even ignore non-relevant participants. Your focus is on efficiently driving progress toward task completion.
 
-After each participant response, answer the following three questions:
+After each participant response, decide the following:
     - WHO should speak next? (A valid participant name, selected from this list: {[agent.name for agent in agents]})
     - WHAT should you ask of them? (phrased the way you would actually ask them in conversation)
     - WHY it makes sense to ask them at this moment (your internal reasoning)
@@ -112,7 +112,7 @@ Your output should be a perfect JSON object as per below:
         "who": participant_name,
         "what": your_question_or_request
     }}
-DO NOT OUTPUT ANYTHING OTHER THAN THIS JSON OBJECT. yOUR OUTPUT MUST BE PARSABLE AS JSON.
+DO NOT OUTPUT ANYTHING OTHER THAN THIS JSON OBJECT. YOUR OUTPUT MUST BE PARSABLE AS JSON.
 """
 
     def select_speaker_prompt(self, agents: List[Agent], excluded_agent: Optional[Union[Agent, None]] = None):
@@ -122,7 +122,7 @@ DO NOT OUTPUT ANYTHING OTHER THAN THIS JSON OBJECT. yOUR OUTPUT MUST BE PARSABLE
         if excluded_agent is not None:
             exclude_speaker_msg = f"\nNote: Don't ask {excluded_agent.name} again, since they just spoke. Instead ask {' or '.join([agent.name for agent in agents])}."
 
-        return f"""Read the above conversation, then carefully answer the following questions, with a focus on making progress on the task:
+        return f"""Read the above conversation, then carefully decide the following, with a focus on making progress on the task:
 
     - WHO should speak next? (A valid participant name, selected from this list: {[agent.name for agent in agents]})
     - WHAT should you ask of them? (phrased the way you would actually ask them in conversation)
