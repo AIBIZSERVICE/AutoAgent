@@ -155,6 +155,10 @@ DO NOT OUTPUT ANYTHING OTHER THAN THIS JSON OBJECT. yOUR OUTPUT MUST BE PARSABLE
                 f"It should be one of {self._VALID_SPEAKER_SELECTION_METHODS} (case insensitive). "
             )
 
+        allow_repeat_speaker = self.allow_repeat_speaker
+        if last_speaker is not None and last_speaker.name == "web_surfer":
+            allow_repeat_speaker = False
+
         agents = self.agents
         n_agents = len(agents)
         # Warn if GroupChat2 is underpopulated
@@ -163,7 +167,7 @@ DO NOT OUTPUT ANYTHING OTHER THAN THIS JSON OBJECT. yOUR OUTPUT MUST BE PARSABLE
                 f"GroupChat2 is underpopulated with {n_agents} agents. "
                 "Please add more agents to the GroupChat2 or use direct communication instead."
             )
-        elif n_agents == 2 and self.speaker_selection_method.lower() != "round_robin" and self.allow_repeat_speaker:
+        elif n_agents == 2 and self.speaker_selection_method.lower() != "round_robin" and allow_repeat_speaker:
             logger.warning(
                 f"GroupChat2 is underpopulated with {n_agents} agents. "
                 "It is recommended to set speaker_selection_method to 'round_robin' or allow_repeat_speaker to False."
@@ -190,7 +194,7 @@ DO NOT OUTPUT ANYTHING OTHER THAN THIS JSON OBJECT. yOUR OUTPUT MUST BE PARSABLE
                     )
 
         # remove the last speaker from the list to avoid selecting the same speaker if allow_repeat_speaker is False
-        agents = agents if self.allow_repeat_speaker else [agent for agent in agents if agent != last_speaker]
+        agents = agents if allow_repeat_speaker else [agent for agent in agents if agent != last_speaker]
 
         if self.speaker_selection_method.lower() == "manual":
             selected_agent = self.manual_select_speaker(agents)
@@ -206,7 +210,7 @@ DO NOT OUTPUT ANYTHING OTHER THAN THIS JSON OBJECT. yOUR OUTPUT MUST BE PARSABLE
         context = self.messages + [
             {
                 "role": "system",
-                "content": self.select_speaker_prompt(agents, None if self.allow_repeat_speaker else last_speaker),
+                "content": self.select_speaker_prompt(agents, None if allow_repeat_speaker else last_speaker),
             }
         ]
         # print(json.dumps(selector._oai_system_message + context, indent=4))
