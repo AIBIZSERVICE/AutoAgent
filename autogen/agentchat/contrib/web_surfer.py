@@ -1,8 +1,10 @@
 import json
+import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Union, Callable, Literal, Tuple
 from autogen import Agent, ConversableAgent, AssistantAgent, UserProxyAgent, GroupChatManager, GroupChat, OpenAIWrapper
 from autogen.browser_utils import SimpleTextBrowser
+from autogen.token_count_utils import count_token
 from autogen.code_utils import content_str
 from datetime import datetime
 
@@ -112,6 +114,24 @@ class WebSurferAgent(ConversableAgent):
                 "parameters": {"type": "object", "properties": {}},
                 "required": [],
             },
+            {
+                "name": "summarize_page",
+                "description": "Summarize the content found at a given url, with respect to an optional question. If the url is not provided, the current page is summarized.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "url": {
+                            "type": "string",
+                            "description": "[Optional] The url of the page to summarize. (Defaults to current page)",
+                        },
+                        "question": {
+                            "type": "string",
+                            "description": "[Optional] The question to answer with the summary. (If omiitted, the entire page will be summarized)",
+                        },
+                    },
+                },
+                "required": [],
+            },
         ]
 
         # Set up the inner monologue
@@ -201,6 +221,56 @@ class WebSurferAgent(ConversableAgent):
                     + content
                 )
 
+        def _summarize_text(text, question):
+            text = text.strip()
+            if len(text) == 0:
+                return ""
+
+            if self.client is None:
+                return "Summarization feature is not available."  # This should not happen
+            messages = [
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant that can summarize long documents to answer question.",
+                }
+            ]
+
+            prompt = f"Please summarize the following into one or two paragraph:\n\n{text}"
+            if question is not None:
+                prompt = (
+                    f"Please summarize the following into one or two paragraphs with respect to '{question}':\n\n{text}"
+                )
+
+            messages.append(
+                {"role": "user", "content": prompt},
+            )
+
+            response = self.client.create(context=None, messages=messages)
+            return self.client.extract_text_or_function_call(response)[0]
+
+        def _summarize_page(url, question):
+            if url is not None and url != self.browser.address:
+                self.browser.visit_page(url)
+
+            summaries = list()
+            buffer = ""
+            for line in re.split(r"([\r\n]+)", self.browser.page_content):
+                tokens = count_token(buffer + line)
+                if tokens > 6000:
+                    summaries.append(_summarize_text(buffer, question))
+                    buffer = line
+                else:
+                    buffer += line
+            if len(buffer) != 0:
+                summaries.append(_summarize_text(buffer, question))
+
+            if len(summaries) == 0:
+                return "Nothing to summarize."
+            elif len(summaries) == 1:
+                return summaries[0]
+            else:
+                return _summarize_text("\n".join(summaries), question)
+
         self._user_proxy.register_function(
             function_map={
                 "bing_search": lambda query: _bing_search(query),
@@ -209,6 +279,7 @@ class WebSurferAgent(ConversableAgent):
                 "page_down": lambda: _page_down(),
                 "find_on_page": lambda find_string: _find_on_page(find_string),
                 "find_next_on_page": lambda: _find_next_on_page(),
+                "summarize_page": lambda url=None, question=None: _summarize_page(url, question),
             }
         )
 
