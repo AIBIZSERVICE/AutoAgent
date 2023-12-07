@@ -1,9 +1,14 @@
+# Disable ruff linter for bare except
+# ruff: noqa: E722
+
 import os
 import json
 import autogen
 from datetime import datetime
 import testbed_utils
+import traceback
 from autogen.agentchat.contrib.web_surfer import WebSurferAgent
+from autogen.agentchat.contrib.group_chat_moderator import GroupChatModerator
 
 testbed_utils.init()
 ##############################
@@ -14,6 +19,7 @@ GAIA_SYSTEM_MESSAGE = (
     + datetime.now().date().isoformat()
     + """.
 I will ask you a question. Answer this question using your coding and language skills.
+When answering questions, it is often best to start by stating all relevant facts that you already know, then work to from there to produce a final answer.
 In the following cases, suggest python code (presented in a coding block beginning ```python) or shell script (presented in a coding block beginning ```sh) for the user to execute:
     1. When you need to collect info, use the code to output the info you need, for example, browse or search the web, download/read a file, print the content of a webpage or a file, check the operating system. After sufficient info is printed and the task is ready to be solved based on your language skill, you can solve the task by yourself.
     2. When you need to perform some task with code, use the code to perform the task and output the result. Finish the task smartly.
@@ -34,29 +40,45 @@ config_list = autogen.config_list_from_json(
     filter_dict={"model": ["__MODEL__"]},
 )
 
+llm_config = testbed_utils.default_llm_config(config_list, timeout=180)
+llm_config["temperature"] = 0.1
+
 assistant = autogen.AssistantAgent(
     "assistant",
     system_message=GAIA_SYSTEM_MESSAGE,
+    description=autogen.AssistantAgent.DEFAULT_DESCRIPTION,
     is_termination_msg=lambda x: x.get("content", "").rstrip().find("FINAL ANSWER") >= 0,
-    llm_config=testbed_utils.default_llm_config(config_list, timeout=180),
+    llm_config=llm_config,
 )
 user_proxy = autogen.UserProxyAgent(
-    "user_proxy",
+    "code_interpreter",
     human_input_mode="NEVER",
-    system_message="A human who can run code at a terminal and report back the results.",
+    description="A code interpreter assistant who cannot write code or perform other tasks, but can EXECUTE Python or sh scripts (when provided in codeblocks) and report back the results.",
     is_termination_msg=lambda x: x.get("content", "").rstrip().find("FINAL ANSWER") >= 0,
     code_execution_config={
         "work_dir": "coding",
         "use_docker": False,
+        "last_n_messages": "auto",
     },
     max_consecutive_auto_reply=10,
     default_auto_reply="",
 )
+
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0"
+
 web_surfer = WebSurferAgent(
     "web_surfer",
-    llm_config=testbed_utils.default_llm_config(config_list, timeout=180),
-    browser_config={"bing_api_key": os.environ["BING_API_KEY"]},
+    system_message=WebSurferAgent.DEFAULT_SURFER_PROMPT,
+    llm_config=llm_config,
     is_termination_msg=lambda x: x.get("content", "").rstrip().find("FINAL ANSWER") >= 0,
+    browser_config={
+        "bing_api_key": os.environ["BING_API_KEY"],
+        "viewport_size": 1024 * 5,
+        "downloads_folder": "coding",
+        "request_kwargs": {
+            "headers": {"User-Agent": user_agent},
+        },
+    },
 )
 
 filename = "__FILE_NAME__".strip()
@@ -67,21 +89,24 @@ __PROMPT__
 if len(filename) > 0:
     question = f"Consider the file '{filename}', which can be read from the current working directory. {question}"
 
-groupchat = autogen.GroupChat(
-    agents=[user_proxy, assistant, web_surfer],
+groupchat = GroupChatModerator(
+    agents=[assistant, user_proxy, web_surfer],
     messages=[],
     speaker_selection_method="__SELECTION_METHOD__",
-    allow_repeat_speaker=False,
+    allow_repeat_speaker=[web_surfer],
     max_round=12,
 )
 
 manager = autogen.GroupChatManager(
     groupchat=groupchat,
     is_termination_msg=lambda x: x.get("content", "").rstrip().find("FINAL ANSWER") >= 0,
-    llm_config=testbed_utils.default_llm_config(config_list, timeout=180),
+    llm_config=llm_config,
 )
 
-user_proxy.initiate_chat(manager, message=question)
+try:
+    manager.initiate_chat(manager, message=question)
+except:
+    traceback.print_exc()
 
 ##############################
 testbed_utils.finalize(agents=[assistant, user_proxy, web_surfer, manager])
