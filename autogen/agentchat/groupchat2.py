@@ -228,6 +228,10 @@ DO NOT OUTPUT ANYTHING OTHER THAN THIS JSON OBJECT. YOUR OUTPUT MUST BE PARSABLE
         elif self.speaker_selection_method.lower() == "random":
             return (random.choice(agents), None)
 
+        # Hack
+        if last_speaker not in self.agents:
+            return (self.agents[0], None)
+
         # auto speaker selection
         selector.update_system_message(self.select_speaker_msg(agents))
         context = self.messages + [
