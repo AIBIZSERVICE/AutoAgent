@@ -86,6 +86,13 @@ class GroupChat2:
                 if self.agents[(offset + i) % len(self.agents)] in agents:
                     return self.agents[(offset + i) % len(self.agents)]
 
+    def intro_msg(self):
+        """Return the introduction message that every agent receives at the start of the chat."""
+        return f"""Hello everyone. We have assembled a great team today to answer questions and solve tasks. In attendance are:
+
+{self._participant_roles(self.agents)}
+"""
+
     def select_speaker_msg(self, agents: List[Agent]):
         """Return the system message for selecting the next speaker. This is always the *first* message in the context."""
         return f"""You are moderating a conversation between the following participants:
@@ -324,6 +331,14 @@ class GroupChatManager2(ConversableAgent):
         message = messages[-1]
         speaker = sender
         groupchat = config
+
+        # Broadcast the intro
+        intro = groupchat.intro_msg()
+        first = True
+        for agent in groupchat.agents:
+            self.send(intro, agent, request_reply=False, silent=first)
+            first = False
+
         for i in range(groupchat.max_round):
             # set the name to speaker's name if the role is not function
             if message["role"] != "function":
