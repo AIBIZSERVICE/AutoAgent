@@ -33,7 +33,7 @@ class SimpleTextBrowser:
     def __init__(
         self,
         start_page: Optional[str] = "about:blank",
-        viewport_size: Optional[int] = 1024 * 16,  # 16Kb
+        viewport_size: Optional[int] = 1024 * 8,
         downloads_folder: Optional[Union[str, None]] = None,
         bing_api_key: Optional[Union[str, None]] = None,
         request_kwargs: Optional[Union[Dict, None]] = None,
@@ -60,17 +60,20 @@ class SimpleTextBrowser:
         return self.history[-1]
 
     def set_address(self, uri_or_path):
+        self.history.append(uri_or_path)
+
         # Handle special URIs
         if uri_or_path == "about:blank":
             self.page_content = list()
         elif uri_or_path.startswith("bing:"):
             self._bing_search(uri_or_path[len("bing:") :].strip())
+        elif uri_or_path.startswith("wikipedia:"):
+            self._wikipedia_lookup(uri_or_path[len("wikipedia:") :].strip())
         else:
             if not uri_or_path.startswith("http:") and not uri_or_path.startswith("https:"):
                 uri_or_path = urljoin(self.address, uri_or_path)
             self._fetch_page(uri_or_path)
 
-        self.history.append(uri_or_path)
         self.viewport_position = 0
         self.find_string = ""
         self.find_matches = list()
@@ -128,7 +131,7 @@ class SimpleTextBrowser:
         self.set_address(path_or_uri)
         return self.viewport
 
-    def _bing_search(self, query):
+    def _bing_api_call(self, query):
         # Prepare the request parameters
         request_kwargs = self.request_kwargs.copy() if self.request_kwargs is not None else {}
 
@@ -148,6 +151,11 @@ class SimpleTextBrowser:
         response = requests.get("https://api.bing.microsoft.com/v7.0/search", **request_kwargs)
         response.raise_for_status()
         results = response.json()
+
+        return results
+
+    def _bing_search(self, query):
+        results = self._bing_api_call(query)
 
         web_snippets = list()
         idx = 0
@@ -174,6 +182,15 @@ class SimpleTextBrowser:
         )
         if len(news_snippets) > 0:
             self.page_content += "\n\n## News Results:\n" + "\n\n".join(news_snippets)
+
+    def _wikipedia_lookup(self, title_or_topic):
+        results = self._bing_api_call(title_or_topic + " Wikipedia")
+        for page in results["webPages"]["value"]:
+            if page["url"].startswith("https://en.wikipedia.org/wiki/"):
+                self.set_address(page["url"])
+                return
+        self.page_title = f"Wikipedia page not found for '{title_or_topic}'"
+        self.page_content = self.page_title
 
     def _fetch_page(self, url):
         try:
@@ -205,8 +222,23 @@ class SimpleTextBrowser:
                     for script in soup(["script", "style"]):
                         script.extract()
 
-                    # Convert to markdown
-                    webpage_text = markdownify.MarkdownConverter().convert_soup(soup)
+                    # Convert to markdown -- Wikipedia gets special attention to get a clean version of the page
+                    if url.startswith("https://en.wikipedia.org/"):
+                        body_elm = soup.find("div", {"id": "mw-content-text"})
+                        title_elm = soup.find("span", {"class": "mw-page-title-main"})
+
+                        if body_elm:
+                            # What's the title
+                            main_title = soup.title.string
+                            if title_elm and len(title_elm) > 0:
+                                main_title = title_elm.string
+                            webpage_text = (
+                                "# " + main_title + "\n\n" + markdownify.MarkdownConverter().convert_soup(body_elm)
+                            )
+                        else:
+                            webpage_text = markdownify.MarkdownConverter().convert_soup(soup)
+                    else:
+                        webpage_text = markdownify.MarkdownConverter().convert_soup(soup)
 
                     # Convert newlines
                     webpage_text = re.sub(r"\r\n", "\n", webpage_text)
@@ -276,6 +308,8 @@ if __name__ == "__main__":
         },
     )
 
+    print(browser.visit_page("wikipedia: Microsoft"))
+    input("Press Next to search Bing...")
     print(browser.visit_page("https://www.adamfourney.com/adam.jpg"))
     input("Press Next to search Bing...")
     print(browser.visit_page("bing: latest news on OpenAI"))
