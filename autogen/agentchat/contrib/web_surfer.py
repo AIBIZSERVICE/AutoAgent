@@ -1,12 +1,16 @@
 import json
+import copy
+import logging
 import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Union, Callable, Literal, Tuple
 from autogen import Agent, ConversableAgent, AssistantAgent, UserProxyAgent, GroupChatManager, GroupChat, OpenAIWrapper
 from autogen.browser_utils import SimpleTextBrowser
-from autogen.token_count_utils import count_token
 from autogen.code_utils import content_str
 from datetime import datetime
+from autogen.token_count_utils import count_token, get_max_token_limit
+
+logger = logging.getLogger(__name__)
 
 
 class WebSurferAgent(ConversableAgent):
@@ -17,26 +21,25 @@ class WebSurferAgent(ConversableAgent):
         + datetime.now().date().isoformat()
     )
 
-    DEFAULT_SURFER_DESCRIPTION = "A helpful assistant with access to a web browser. Ask them to perform web searches, open pages, navigate within pages (scroll up/down, find-in-page, etc.)."
+    DEFAULT_SURFER_DESCRIPTION = "A helpful assistant with access to a web browser. Ask them to perform web searches, open pages, and answer questions from pages, generate summaries, or even scroll to parts of the page that are relevant."
 
     def __init__(
         self,
         name,
         system_message: Optional[Union[str, List]] = DEFAULT_SURFER_PROMPT,
-        description: Optional[Union[str, None]] = DEFAULT_SURFER_DESCRIPTION,
         is_termination_msg: Optional[Callable[[Dict], bool]] = None,
         max_consecutive_auto_reply: Optional[int] = None,
         human_input_mode: Optional[str] = "TERMINATE",
         function_map: Optional[Dict[str, Callable]] = None,
         code_execution_config: Optional[Union[Dict, Literal[False]]] = None,
         llm_config: Optional[Union[Dict, Literal[False]]] = None,
+        summarizer_llm_config: Optional[Union[Dict, Literal[False]]] = None,
         default_auto_reply: Optional[Union[str, Dict, None]] = "",
         browser_config: Optional[Union[Dict, None]] = None,
     ):
         super().__init__(
             name=name,
             system_message=system_message,
-            description=description,
             is_termination_msg=is_termination_msg,
             max_consecutive_auto_reply=max_consecutive_auto_reply,
             human_input_mode=human_input_mode,
@@ -46,13 +49,38 @@ class WebSurferAgent(ConversableAgent):
             default_auto_reply=default_auto_reply,
         )
 
+        # What internal model are we using for summarization?
+        if summarizer_llm_config is None:
+            self.summarizer_llm_config = copy.deepcopy(llm_config)
+            if "config_list" in self.summarizer_llm_config:
+                preferred_models = [
+                    m
+                    for m in self.summarizer_llm_config["config_list"]
+                    if m["model"] in ["gpt-3.5-turbo-1106", "gpt-3.5-turbo-16k-0613", "gpt-3.5-turbo-16k"]
+                ]
+                if len(preferred_models) == 0:
+                    logger.warning(
+                        "The summarizer did not find the preferred model (gpt-3.5-turbo-16k) in the config list. "
+                        "Semantic operations on webpages (summarization or semantic find-in-page) might be costly "
+                        "or ineffective."
+                    )
+                else:
+                    self.summarizer_llm_config["config_list"] = preferred_models
+        else:
+            self.summarizer_llm_config = summarizer_llm_config
+
+        # Create the summarizer client
+        self.summarization_client = None
+        if self.summarizer_llm_config is not None:
+            self.summarization_client = OpenAIWrapper(**self.summarizer_llm_config)
+
         if browser_config is None:
             self.browser = SimpleTextBrowser()
         else:
             self.browser = SimpleTextBrowser(**browser_config)
 
         # Set the config to support function calling
-        inner_llm_config = json.loads(json.dumps(llm_config))
+        inner_llm_config = copy.deepcopy(llm_config)
         inner_llm_config["functions"] = [
             {
                 "name": "bing_search",
@@ -83,6 +111,20 @@ class WebSurferAgent(ConversableAgent):
                 "required": ["url"],
             },
             {
+                "name": "visit_wikipedia",
+                "description": "Navigate to a wikipedia page and return its text.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "topic_or_title": {
+                            "type": "string",
+                            "description": "The topic or title of the wikipedia page to visit.",
+                        }
+                    },
+                },
+                "required": ["topic_or_title"],
+            },
+            {
                 "name": "page_up",
                 "description": "Scroll the viewport UP one page-length in the current webpage and return the new viewport content.",
                 "parameters": {"type": "object", "properties": {}},
@@ -94,46 +136,91 @@ class WebSurferAgent(ConversableAgent):
                 "parameters": {"type": "object", "properties": {}},
                 "required": [],
             },
-            {
-                "name": "find_on_page",
-                "description": "Find a string on a the current webpage, and scroll to its position (equivalent to Ctrl+F).",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "find_string": {
-                            "type": "string",
-                            "description": "The string to find on the page.",
-                        }
-                    },
-                },
-                "required": ["url"],
-            },
-            {
-                "name": "find_next_on_page",
-                "description": "Find the next occurrence of a string on a the current webpage, and scroll to its position.",
-                "parameters": {"type": "object", "properties": {}},
-                "required": [],
-            },
-            # TOO COSTLY
-            #            {
-            #                "name": "summarize_page",
-            #                "description": "Summarize the content found at a given url, with respect to an optional question. If the url is not provided, the current page is summarized.",
-            #                "parameters": {
-            #                    "type": "object",
-            #                    "properties": {
-            #                        "url": {
-            #                            "type": "string",
-            #                            "description": "[Optional] The url of the page to summarize. (Defaults to current page)",
-            #                        },
-            #                        "question": {
-            #                            "type": "string",
-            #                            "description": "[Optional] The question to answer with the summary. (If omiitted, the entire page will be summarized)",
-            #                        },
-            #                    },
-            #                },
-            #                "required": [],
-            #            },
         ]
+
+        # Enable semantic search
+        if self.summarization_client is not None:
+            inner_llm_config["functions"].append(
+                {
+                    "name": "answer_from_page",
+                    "description": "Uses AI to read the page and directly answer a given question based on the content.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "question": {
+                                "type": "string",
+                                "description": "The question to directly answer.",
+                            },
+                            "url": {
+                                "type": "string",
+                                "description": "[Optional] The url of the page. (Defaults to the current page)",
+                            },
+                        },
+                    },
+                    "required": ["question"],
+                }
+            )
+            inner_llm_config["functions"].append(
+                {
+                    "name": "summarize_page",
+                    "description": "Uses AI to summarize the content found at a given url. If the url is not provided, the current page is summarized.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string",
+                                "description": "[Optional] The url of the page to summarize. (Defaults to current page)",
+                            },
+                        },
+                    },
+                    "required": [],
+                }
+            )
+            inner_llm_config["functions"].append(
+                {
+                    "name": "find_in_page",
+                    "description": "Scroll to the part of the page most relevant to a question or query. An AI-enhanced version of Ctrl+F",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "The query to search for, or the question to answer.",
+                            },
+                            "url": {
+                                "type": "string",
+                                "description": "[Optional] The url of the page on which to perform a semantic search. (Defaults to current page)",
+                            },
+                        },
+                    },
+                    "required": ["query"],
+                }
+            )
+        else:  # Rely on old-school methods
+            inner_llm_config["functions"].append(
+                {
+                    "name": "find_on_page",
+                    "description": "Find a string on a the current webpage, and scroll to its position (equivalent to Ctrl+F).",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "find_string": {
+                                "type": "string",
+                                "description": "The string to find on the page.",
+                            }
+                        },
+                    },
+                    "required": ["url"],
+                }
+            )
+            inner_llm_config["functions"].append(
+                {
+                    "name": "find_next_on_page",
+                    "description": "Find the next occurrence of a string on a the current webpage, and scroll to its position.",
+                    "parameters": {"type": "object", "properties": {}},
+                    "required": [],
+                }
+            )
 
         # Set up the inner monologue
         self._assistant = AssistantAgent(
@@ -168,6 +255,11 @@ class WebSurferAgent(ConversableAgent):
 
         def _bing_search(query):
             self.browser.visit_page(f"bing: {query}")
+            header, content = _browser_state()
+            return header.strip() + "\n=======================\n" + content
+
+        def _visit_wikipedia(topic_or_title):
+            self.browser.visit_page(f"wikipedia: {topic_or_title}")
             header, content = _browser_state()
             return header.strip() + "\n=======================\n" + content
 
@@ -222,13 +314,33 @@ class WebSurferAgent(ConversableAgent):
                     + content
                 )
 
-        def _summarize_text(text, question):
-            text = text.strip()
-            if len(text) == 0:
-                return ""
+        def _summarize_page(question, url):
+            if url is not None and url != self.browser.address:
+                self.browser.visit_page(url)
 
-            if self.client is None:
-                return "Summarization feature is not available."  # This should not happen
+            # We are likely going to need to fix this later, but summarize only as many tokens that fit in the buffer
+            limit = 4096
+            try:
+                limit = get_max_token_limit(self.summarizer_llm_config["config_list"][0]["model"])
+            except ValueError:
+                pass  # limit is unknown
+
+            if limit < 16000:
+                logger.warning(
+                    f"The token limit ({limit}) of the WebSurferAgent.summarizer_llm_config, is below the recommended 16k."
+                )
+
+            buffer = ""
+            for line in re.split(r"([\r\n]+)", self.browser.page_content):
+                tokens = count_token(buffer + line)
+                if tokens + 1024 > limit:  # Leave room for our summary
+                    break
+                buffer += line
+
+            buffer = buffer.strip()
+            if len(buffer) == 0:
+                return "Nothing to summarize."
+
             messages = [
                 {
                     "role": "system",
@@ -236,41 +348,82 @@ class WebSurferAgent(ConversableAgent):
                 }
             ]
 
-            prompt = f"Please summarize the following into one or two paragraph:\n\n{text}"
+            prompt = f"Please summarize the following into one or two paragraph:\n\n{buffer}"
             if question is not None:
-                prompt = (
-                    f"Please summarize the following into one or two paragraphs with respect to '{question}':\n\n{text}"
-                )
+                prompt = f"Please summarize the following into one or two paragraphs with respect to '{question}':\n\n{buffer}"
 
             messages.append(
                 {"role": "user", "content": prompt},
             )
 
-            response = self.client.create(context=None, messages=messages)
-            return self.client.extract_text_or_function_call(response)[0]
+            response = self.summarization_client.create(context=None, messages=messages)
+            return self.summarization_client.extract_text_or_function_call(response)[0]
 
-        def _summarize_page(url, question):
+        def _semantic_find_on_page(query, url):
             if url is not None and url != self.browser.address:
                 self.browser.visit_page(url)
 
-            summaries = list()
-            buffer = ""
-            for line in re.split(r"([\r\n]+)", self.browser.page_content):
-                tokens = count_token(buffer + line)
-                if tokens > 6000:
-                    summaries.append(_summarize_text(buffer, question))
-                    buffer = line
-                else:
-                    buffer += line
-            if len(buffer) != 0:
-                summaries.append(_summarize_text(buffer, question))
+            # We are likely going to need to fix this later, but summarize only as many tokens that fit in the buffer
+            limit = 4096
+            try:
+                limit = get_max_token_limit(self.summarizer_llm_config["config_list"][0]["model"])
+            except ValueError:
+                pass  # limit is unknown
 
-            if len(summaries) == 0:
+            if limit < 16000:
+                logger.warning(
+                    f"The token limit ({limit}) of the WebSurferAgent.summarizer_llm_config, is below the recommended 16k."
+                )
+
+            lines = list()
+            buffer = ""
+            line_number = 0
+            for line in re.split(r"[\r\n]", self.browser.page_content):
+                line_number += 1
+                line_indicator = f"[Line {line_number}] "
+                line = line + "\n"
+
+                tokens = count_token(buffer + line_indicator + line)
+                if tokens + 1024 > limit:  # Leave room for our summary
+                    break
+
+                lines.append(line)
+                buffer += line_indicator + line
+
+            buffer = buffer.strip()
+            if len(buffer) == 0:
                 return "Nothing to summarize."
-            elif len(summaries) == 1:
-                return summaries[0]
+
+            messages = [
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant that can find relevant passages in long documents to answer questions.",
+                },
+                {
+                    "role": "user",
+                    "content": f"Consider the following document, which contains line number markings:\n\n{buffer}",
+                },
+                {
+                    "role": "user",
+                    "content": f"""Read the above document, and think about the answer to the question '{query}'. With this in mind, complete the following:
+
+The answer to the question or query is:
+The most relevant direct quote from the page is:
+This quote can be found on or near Line:""",
+                },
+            ]
+            # print(json.dumps(messages, indent=4))
+
+            response = self.summarization_client.create(context=None, messages=messages)
+            response = self.summarization_client.extract_text_or_function_call(response)[0]
+            # print(response)
+
+            m = re.search(r"[Ll]ine\:?\s+(\d+)", response)
+            if m:
+                found_line = int(m.group(1))
+                return _find_on_page(lines[found_line - 1])
             else:
-                return _summarize_text("\n".join(summaries), question)
+                return response
 
         self._user_proxy.register_function(
             function_map={
@@ -280,7 +433,10 @@ class WebSurferAgent(ConversableAgent):
                 "page_down": lambda: _page_down(),
                 "find_on_page": lambda find_string: _find_on_page(find_string),
                 "find_next_on_page": lambda: _find_next_on_page(),
-                # "summarize_page": lambda url=None, question=None: _summarize_page(url, question),
+                "visit_wikipedia": lambda topic_or_title: _visit_wikipedia(topic_or_title),
+                "answer_from_page": lambda question=None, url=None: _summarize_page(question, url),
+                "summarize_page": lambda question=None, url=None: _summarize_page(None, url),
+                "find_in_page": lambda query=None, url=None: _semantic_find_on_page(query, url),
             }
         )
 

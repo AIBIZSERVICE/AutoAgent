@@ -39,9 +39,15 @@ config_list = autogen.config_list_from_json(
     "OAI_CONFIG_LIST",
     filter_dict={"model": ["__MODEL__"]},
 )
-
 llm_config = testbed_utils.default_llm_config(config_list, timeout=180)
 llm_config["temperature"] = 0.1
+
+summarizer_config_list = autogen.config_list_from_json(
+    "OAI_CONFIG_LIST",
+    filter_dict={"model": ["gpt-3.5-turbo-16k"]},
+)
+summarizer_llm_config = testbed_utils.default_llm_config(summarizer_config_list, timeout=180)
+summarizer_llm_config["temperature"] = 0.1
 
 assistant = autogen.AssistantAgent(
     "assistant",
@@ -70,6 +76,7 @@ web_surfer = WebSurferAgent(
     "web_surfer",
     system_message=WebSurferAgent.DEFAULT_SURFER_PROMPT,
     llm_config=llm_config,
+    summarizer_llm_config=summarizer_llm_config,
     is_termination_msg=lambda x: x.get("content", "").rstrip().find("FINAL ANSWER") >= 0,
     browser_config={
         "bing_api_key": os.environ["BING_API_KEY"],
