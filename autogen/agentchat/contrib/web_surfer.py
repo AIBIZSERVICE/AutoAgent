@@ -124,18 +124,18 @@ class WebSurferAgent(ConversableAgent):
                 },
                 "required": ["topic_or_title"],
             },
-            {
-                "name": "page_up",
-                "description": "Scroll the viewport UP one page-length in the current webpage and return the new viewport content.",
-                "parameters": {"type": "object", "properties": {}},
-                "required": [],
-            },
-            {
-                "name": "page_down",
-                "description": "Scroll the viewport DOWN one page-length in the current webpage and return the new viewport content.",
-                "parameters": {"type": "object", "properties": {}},
-                "required": [],
-            },
+            #            {
+            #                "name": "page_up",
+            #                "description": "Scroll the viewport UP one page-length in the current webpage and return the new viewport content.",
+            #                "parameters": {"type": "object", "properties": {}},
+            #                "required": [],
+            #            },
+            #            {
+            #                "name": "page_down",
+            #                "description": "Scroll the viewport DOWN one page-length in the current webpage and return the new viewport content.",
+            #                "parameters": {"type": "object", "properties": {}},
+            #                "required": [],
+            #            },
         ]
 
         # Enable semantic search
