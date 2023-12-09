@@ -21,7 +21,7 @@ class WebSurferAgent(ConversableAgent):
         + datetime.now().date().isoformat()
     )
 
-    DEFAULT_SURFER_DESCRIPTION = "A helpful assistant with access to a web browser. Ask them to perform web searches, open pages, and answer questions from pages, generate summaries, or even scroll to parts of the page that are relevant."
+    DEFAULT_SURFER_DESCRIPTION = "A helpful assistant with access to a web browser. Ask them to perform web searches, open pages, and answer questions from pages, generate summaries, or even a semantic 'find-in-page' feature that scrolls to parts of the page that are relevant."
 
     def __init__(
         self,
