@@ -21,7 +21,7 @@ class WebSurferAgent(ConversableAgent):
         + datetime.now().date().isoformat()
     )
 
-    DEFAULT_SURFER_DESCRIPTION = "A helpful assistant with access to a web browser. Ask them to perform web searches, open pages, and answer questions from pages, generate summaries, or even a semantic 'find-in-page' feature that scrolls to parts of the page that are relevant."
+    DEFAULT_SURFER_DESCRIPTION = "A helpful assistant with access to a web browser. Ask them to perform web searches, open pages, answer questions from pages, and generate summaries."  # , or even a semantic 'find-in-page' feature that scrolls to parts of the page that are relevant."
 
     def __init__(
         self,
@@ -176,26 +176,26 @@ class WebSurferAgent(ConversableAgent):
                     "required": [],
                 }
             )
-            inner_llm_config["functions"].append(
-                {
-                    "name": "find_in_page",
-                    "description": "Scroll to the part of the page most relevant to a question or query. An AI-enhanced version of Ctrl+F",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "query": {
-                                "type": "string",
-                                "description": "The query to search for, or the question to answer.",
-                            },
-                            "url": {
-                                "type": "string",
-                                "description": "[Optional] The url of the page on which to perform a semantic search. (Defaults to current page)",
-                            },
-                        },
-                    },
-                    "required": ["query"],
-                }
-            )
+            # inner_llm_config["functions"].append(
+            #    {
+            #        "name": "find_in_page",
+            #        "description": "Scroll to the part of the page most relevant to a question or query. An AI-enhanced version of Ctrl+F",
+            #        "parameters": {
+            #            "type": "object",
+            #            "properties": {
+            #                "query": {
+            #                    "type": "string",
+            #                    "description": "The query to search for, or the question to answer.",
+            #                },
+            #                "url": {
+            #                    "type": "string",
+            #                    "description": "[Optional] The url of the page on which to perform a semantic search. (Defaults to current page)",
+            #                },
+            #            },
+            #        },
+            #        "required": ["query"],
+            #    }
+            # )
         else:  # Rely on old-school methods
             inner_llm_config["functions"].append(
                 {
