@@ -41,10 +41,13 @@ __PROMPT__
 Your team then worked diligently to address that request. Here is a transcript of that conversation:""",
         }
     ]
-
     tokens += count_token(messages[-1])
 
-    # Add the transcript
+    # The first message just repeats the question, so remove it
+    if len(inner_messages) > 1:
+        del inner_messages[0]
+
+    # copy them to this context
     for message in inner_messages:
         message = copy.deepcopy(message)
         message["role"] = "user"
@@ -74,14 +77,14 @@ If you are asked for a comma separated list, apply the above rules depending of 
         tokens -= count_token(messages[mid])
         del messages[mid]
 
-    print(json.dummps(messages, indent=4))
+    # print(json.dumps(messages, indent=4))
 
     response = client.create(context=None, messages=messages)
     extracted_response = client.extract_text_or_completion_object(response)[0]
     if not isinstance(extracted_response, str):
         return str(extracted_response.model_dump(mode="dict"))  # Not sure what to do here
     else:
-        print(extracted_response)
+        # print(extracted_response)
         return extracted_response
 
 
@@ -143,6 +146,7 @@ manager = autogen.GroupChatManager(
 
 # Start the conversation
 soc = SocietyOfMindAgent(
+    "gaia_agent",
     chat_manager=manager,
     response_preparer=response_preparer,
     llm_config=llm_config,

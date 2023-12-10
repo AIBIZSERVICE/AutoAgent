@@ -1,5 +1,6 @@
 # ruff: noqa: E722
 import json
+import traceback
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Union, Callable, Literal, Tuple
 from autogen import Agent, ConversableAgent, GroupChatManager, GroupChat, OpenAIWrapper
@@ -96,6 +97,6 @@ class SocietyOfMindAgent(ConversableAgent):
         try:
             first_agent.initiate_chat(self.chat_manager, message=messages[-1]["content"], clear_history=False)
         except:
-            pass
+            traceback.print_exc()
 
         return True, self.response_preparer(self._group_chat.messages)

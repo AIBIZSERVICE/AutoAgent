@@ -1,1 +1,1 @@
-pip install pdfminer.six markdownify pathverify
+pip install pdfminer.six markdownify pathvalidate
