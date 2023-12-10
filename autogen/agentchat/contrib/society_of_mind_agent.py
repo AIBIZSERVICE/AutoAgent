@@ -1,3 +1,4 @@
+# ruff: noqa: E722
 import json
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Union, Callable, Literal, Tuple
@@ -92,5 +93,9 @@ class SocietyOfMindAgent(ConversableAgent):
 
         # Always send to the first agent in the list
         first_agent = self._group_chat.agents[0]
-        first_agent.initiate_chat(self.chat_manager, message=messages[-1]["content"], clear_history=False)
+        try:
+            first_agent.initiate_chat(self.chat_manager, message=messages[-1]["content"], clear_history=False)
+        except:
+            pass
+
         return True, self.response_preparer(self._group_chat.messages)
