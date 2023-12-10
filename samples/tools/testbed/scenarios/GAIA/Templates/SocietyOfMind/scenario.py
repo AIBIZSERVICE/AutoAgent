@@ -13,7 +13,7 @@ testbed_utils.init()
 
 config_list = autogen.config_list_from_json(
     "OAI_CONFIG_LIST",
-    filter_dict={"model": ["gpt-4"]},
+    filter_dict={"model": ["__MODEL__"]},
 )
 llm_config = testbed_utils.default_llm_config(config_list, timeout=180)
 llm_config["temperature"] = 0.1
@@ -62,9 +62,9 @@ Read the above conversation and output a FINAL ANSWER to the question. The quest
 
 __PROMPT__
 
-To output the final answer, use the following template: FINAL ANSWER: [YOUR FINAL ANSWER].
+To output the final answer, use the following template: FINAL ANSWER: [YOUR FINAL ANSWER]
 YOUR FINAL ANSWER should be a number OR as few words as possible OR a comma separated list of numbers and/or strings.
-If you are asked for a number, don’t use comma to write your number neither use units such as $ or percent sign unless specified otherwise, and don't output any final sentence punction such as '.', '!', or '?'.
+If you are asked for a number, don’t use comma to write your number neither use units such as $ or percent sign unless specified otherwise, and don't output any final sentence punctuation such as '.', '!', or '?'.
 If you are asked for a string, don’t use articles, neither abbreviations (e.g. for cities), and write the digits in plain text unless specified otherwise.
 If you are asked for a comma separated list, apply the above rules depending of whether the element to be put in the list is a number or a string.""",
         }
