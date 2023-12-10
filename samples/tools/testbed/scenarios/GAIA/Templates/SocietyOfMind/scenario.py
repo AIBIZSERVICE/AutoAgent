@@ -1,11 +1,14 @@
+# ruff: noqa: E722
 import os
 import json
 import autogen
 import copy
+import traceback
 from datetime import datetime
 import testbed_utils
 from autogen.agentchat.contrib.web_surfer import WebSurferAgent
 from autogen.agentchat.contrib.society_of_mind_agent import SocietyOfMindAgent
+from autogen.agentchat.contrib.group_chat_moderator import GroupChatModerator
 from autogen.token_count_utils import count_token, get_max_token_limit
 
 testbed_utils.init()
@@ -130,7 +133,7 @@ __PROMPT__
 if len(filename) > 0:
     question = f"Consider the file '{filename}', which can be read from the current working directory. {question}"
 
-groupchat = autogen.GroupChat(
+groupchat = GroupChatModerator(
     agents=[user_proxy, assistant, web_surfer],
     messages=[],
     speaker_selection_method="__SELECTION_METHOD__",
@@ -144,7 +147,6 @@ manager = autogen.GroupChatManager(
     llm_config=llm_config,
 )
 
-# Start the conversation
 soc = SocietyOfMindAgent(
     "gaia_agent",
     chat_manager=manager,
@@ -152,7 +154,17 @@ soc = SocietyOfMindAgent(
     llm_config=llm_config,
 )
 
-user_proxy.initiate_chat(soc, message=question)
+try:
+    # Initiate one turn of the conversation
+    user_proxy.send(
+        question,
+        soc,
+        request_reply=True,
+        silent=False,
+    )
+except:
+    traceback.print_exc()
+
 
 ##############################
 testbed_utils.finalize(agents=[soc, assistant, user_proxy, web_surfer, manager])
