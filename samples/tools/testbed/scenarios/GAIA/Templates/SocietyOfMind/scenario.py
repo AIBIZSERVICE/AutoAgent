@@ -131,13 +131,14 @@ if len(filename_prompt) > 0:
 
 
 question = f"""
-Below, I will pose a question to you that I would like you to answer. The assistant should speak first and should begin by listing all the relevant facts necessary to derive an answer, then fill in those facts from memory where possible, including specific names, numbers and statistics. assistant is Ken Jennings-level with trivia, and Mensa-level with puzzles, so there should be a deep well to draw from. After listing the facts, begin to solve the question in earnest together. Here is the question:
+Below I will pose a question to you that I would like you to answer. You should begin by listing all the relevant facts necessary to derive an answer, then fill in those facts from memory where possible, including specific names, numbers and statistics. You are Ken Jennings-level with trivia, and Mensa-level with puzzles, so there should be a deep well to draw from. After listing the facts, begin to solve the question in earnest. Here is the question:
 
 {filename_prompt}__PROMPT__
 """.strip()
 
 groupchat = GroupChatModerator(
-    agents=[assistant, user_proxy, web_surfer],
+    agents=[user_proxy, assistant, web_surfer],
+    first_speaker=assistant,
     messages=[],
     speaker_selection_method="__SELECTION_METHOD__",
     allow_repeat_speaker=False,

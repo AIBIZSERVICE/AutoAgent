@@ -1,5 +1,5 @@
 from typing import Callable, Dict, Optional, Union, Tuple, List, Any
-from autogen import GroupChat, Agent
+from autogen import GroupChat, Agent, ConversableAgent
 import logging
 
 logger = logging.getLogger(__name__)
@@ -18,6 +18,7 @@ class GroupChatModerator(GroupChat):
         func_call_filter: bool = True,
         speaker_selection_method: str = "auto",
         allow_repeat_speaker: bool = True,
+        first_speaker: Agent = None,
     ):
         """
         GroupChatModerator uses the same initilization and constructor as GroupChat.
@@ -32,6 +33,15 @@ class GroupChatModerator(GroupChat):
             speaker_selection_method=speaker_selection_method,
             allow_repeat_speaker=allow_repeat_speaker,
         )
+        self.first_speaker = first_speaker
+        self._selection_turns = 0
+
+    # Enable specification of who speaks first
+    def select_speaker(self, last_speaker: Agent, selector: ConversableAgent):
+        self._selection_turns += 1
+        if self.first_speaker is not None and self._selection_turns == 1:
+            return self.first_speaker
+        return super().select_speaker(last_speaker, selector)
 
     def select_speaker_msg(self, agents: List[Agent]):
         """Return the system message for selecting the next speaker. This is always the *first* message in the context."""
