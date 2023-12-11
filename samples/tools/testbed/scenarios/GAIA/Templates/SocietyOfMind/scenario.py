@@ -125,16 +125,19 @@ web_surfer = WebSurferAgent(
     },
 )
 
-filename = "__FILE_NAME__".strip()
-question = """
-__PROMPT__
+filename_prompt = "__FILE_NAME__".strip()
+if len(filename_prompt) > 0:
+    filename_prompt = f"Consider the file '{filename_prompt}' which can be read from the current working directory. If you need to read or write it, output python code in a code block (```python) to do so. "
+
+
+question = f"""
+Below, I will pose a question to you that I would like you to answer. The assistant should speak first and should begin by listing all the relevant facts necessary to derive an answer, then fill in those facts from memory where possible, including specific names, numbers and statistics. assistant is Ken Jennings-level with trivia, and Mensa-level with puzzles, so there should be a deep well to draw from. After listing the facts, begin to solve the question in earnest together. Here is the question:
+
+{filename_prompt}__PROMPT__
 """.strip()
 
-if len(filename) > 0:
-    question = f"Consider the file '{filename}', which can be read from the current working directory. {question}"
-
 groupchat = GroupChatModerator(
-    agents=[user_proxy, assistant, web_surfer],
+    agents=[assistant, user_proxy, web_surfer],
     messages=[],
     speaker_selection_method="__SELECTION_METHOD__",
     allow_repeat_speaker=False,

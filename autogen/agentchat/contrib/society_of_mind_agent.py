@@ -92,10 +92,9 @@ class SocietyOfMindAgent(ConversableAgent):
         # for message in external_history:
         #    self._group_chat.append(message)
 
-        # Always send to the first agent in the list
-        first_agent = self._group_chat.agents[0]
+        # First message comes from this agent
         try:
-            first_agent.initiate_chat(self.chat_manager, message=messages[-1]["content"], clear_history=False)
+            self.initiate_chat(self.chat_manager, message=messages[-1]["content"], clear_history=False)
         except:
             traceback.print_exc()
 
