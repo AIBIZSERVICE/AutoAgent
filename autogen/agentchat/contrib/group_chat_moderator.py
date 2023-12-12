@@ -17,7 +17,7 @@ class GroupChatModerator(GroupChat):
         admin_name: str = "Admin",
         func_call_filter: bool = True,
         speaker_selection_method: str = "auto",
-        allow_repeat_speaker: bool = True,
+        allow_repeat_speaker: Optional[Union[bool, List[Agent]]] = True,
         first_speaker: Agent = None,
     ):
         """
