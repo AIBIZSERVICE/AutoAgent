@@ -51,9 +51,9 @@ class GroupChatModerator(GroupChat):
 
 Read the following conversation, then carefully consider who should speak next based on who's input would be most valued in this moment (e.g., to make the most progress on the task). Speakers do not need equal speaking time. You may even ignore non-relevant participants. Your focus is on efficiently driving progress toward task completion.
 
-You must select only one speaker to go next, and you must only return their name (i.e., from the set {[agent.name for agent in agents]})
+You must select only one speaker to go next (i.e., from the set {[agent.name for agent in agents]}). Provide their name, PRECCEDED by a brief explanation for your choice.
 """
 
     def select_speaker_prompt(self, agents: List[Agent]):
         """Return the floating system prompt selecting the next speaker. This is always the *last* message in the context."""
-        return f"Read the above conversation, then carefully consider who should speak next based on who's input would be most valued in this moment to make progress on the task. Select the next speaker from {[agent.name for agent in agents]}. Only return their name."
+        return f"Read the above conversation, then carefully consider who should speak next based on who's input would be most valued in this moment to make progress on the task. Select the next speaker from {[agent.name for agent in agents]}. Return their name PRECCEDED by a brief explanation for your choice."
