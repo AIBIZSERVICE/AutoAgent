@@ -1,5 +1,6 @@
 # ruff: noqa: E722
 import os
+import sys
 import json
 import autogen
 import copy
@@ -104,7 +105,6 @@ user_proxy = autogen.UserProxyAgent(
         "work_dir": "coding",
         "use_docker": False,
     },
-    max_consecutive_auto_reply=10,
     default_auto_reply="",
 )
 
@@ -139,10 +139,10 @@ Below I will pose a question to you that I would like you to answer. You should 
 groupchat = GroupChatModerator(
     agents=[user_proxy, assistant, web_surfer],
     first_speaker=assistant,
+    max_round=sys.maxsize,
     messages=[],
     speaker_selection_method="__SELECTION_METHOD__",
-    allow_repeat_speaker=False,
-    max_round=12,
+    allow_repeat_speaker=[web_surfer],
 )
 
 manager = autogen.GroupChatManager(
