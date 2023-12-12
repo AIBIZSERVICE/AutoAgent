@@ -103,8 +103,9 @@ assistant = autogen.AssistantAgent(
     llm_config=llm_config,
 )
 user_proxy = autogen.UserProxyAgent(
-    "user_proxy",
+    "computer_terminal",
     human_input_mode="NEVER",
+    description="A computer terminal that performs no other action than running Python scripts (provided to it quoted in ```python code blocks), or sh shell scripts (provided to it quoted in ```sh code blocks)",
     is_termination_msg=lambda x: x.get("content", "").rstrip().find("TERMINATE") >= 0,
     code_execution_config={
         "work_dir": "coding",
