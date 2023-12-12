@@ -29,7 +29,15 @@ summarizer_config_list = autogen.config_list_from_json(
 summarizer_llm_config = testbed_utils.default_llm_config(summarizer_config_list, timeout=180)
 summarizer_llm_config["temperature"] = 0.1
 
-client = autogen.OpenAIWrapper(**llm_config)
+final_config_list = autogen.config_list_from_json(
+    "OAI_CONFIG_LIST",
+    filter_dict={"model": ["gpt-4-1106-preview"]},
+)
+final_llm_config = testbed_utils.default_llm_config(final_config_list, timeout=180)
+final_llm_config["temperature"] = 0.1
+
+
+client = autogen.OpenAIWrapper(**final_llm_config)
 
 
 def response_preparer(inner_messages):
@@ -75,20 +83,17 @@ If you are asked for a comma separated list, apply the above rules depending of 
     )
     tokens += count_token(messages[-1])
 
-    # Hardcoded
-    while tokens > 3200:
-        mid = int(len(messages) / 2)  # Remove from the middle
-        tokens -= count_token(messages[mid])
-        del messages[mid]
-
-    # print(json.dumps(messages, indent=4))
+    #    # Hardcoded
+    #    while tokens > 3200:
+    #        mid = int(len(messages) / 2)  # Remove from the middle
+    #        tokens -= count_token(messages[mid])
+    #        del messages[mid]
 
     response = client.create(context=None, messages=messages)
     extracted_response = client.extract_text_or_completion_object(response)[0]
     if not isinstance(extracted_response, str):
         return str(extracted_response.model_dump(mode="dict"))  # Not sure what to do here
     else:
-        # print(extracted_response)
         return extracted_response
 
 
@@ -106,6 +111,7 @@ user_proxy = autogen.UserProxyAgent(
         "use_docker": False,
     },
     default_auto_reply="",
+    max_consecutive_auto_reply=15,
 )
 
 user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0"
@@ -139,7 +145,7 @@ Below I will pose a question to you that I would like you to answer. You should 
 groupchat = GroupChatModerator(
     agents=[user_proxy, assistant, web_surfer],
     first_speaker=assistant,
-    max_round=sys.maxsize,
+    max_round=40,
     messages=[],
     speaker_selection_method="__SELECTION_METHOD__",
     allow_repeat_speaker=[web_surfer, assistant],
