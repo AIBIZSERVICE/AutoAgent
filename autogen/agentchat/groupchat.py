@@ -210,6 +210,7 @@ Then select the next role from {[agent.name for agent in agents]} to play. Only 
             logger.warning(
                 f"GroupChat select_speaker failed to resolve the next speaker's name. This is because the speaker selection OAI call returned:\n{name}"
             )
+            return self.next_agent(last_speaker, agents)
 
         # Return the result
         try:
