@@ -2,7 +2,6 @@ import logging
 import random
 import re
 import sys
-import json
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Union, Tuple
 
@@ -198,8 +197,6 @@ Then select the next role from {[agent.name for agent in agents]} to play. Only 
         selector.update_system_message(self.select_speaker_msg(agents))
         context = self.messages + [{"role": "system", "content": self.select_speaker_prompt(agents)}]
         final, name = selector.generate_oai_reply(context)
-
-        print(json.dumps(context, indent=4))
 
         if not final:
             # the LLM client is None, thus no reply is generated. Use round robin instead.

@@ -142,7 +142,7 @@ groupchat = GroupChatModerator(
     max_round=sys.maxsize,
     messages=[],
     speaker_selection_method="__SELECTION_METHOD__",
-    allow_repeat_speaker=[web_surfer],
+    allow_repeat_speaker=[web_surfer, assistant],
 )
 
 manager = autogen.GroupChatManager(
