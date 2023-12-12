@@ -148,6 +148,7 @@ groupchat = GroupChatModerator(
 manager = autogen.GroupChatManager(
     groupchat=groupchat,
     is_termination_msg=lambda x: x.get("content", "").rstrip().find("TERMINATE") >= 0,
+    send_introductions=True,
     llm_config=llm_config,
 )
 
