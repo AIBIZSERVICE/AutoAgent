@@ -343,7 +343,7 @@ class GroupChatManager(ConversableAgent):
             intro = {"role": "user", "name": self.name, "content": groupchat.introductions_msg()}
             for agent in groupchat.agents:
                 self.send(intro, agent, request_reply=False, silent=True)
-            groupchat.append(intro)
+            # Don't send this one, since the prompt gets its own. #groupchat.append(intro)
 
         for i in range(groupchat.max_round):
             # set the name to speaker's name if the role is not function
